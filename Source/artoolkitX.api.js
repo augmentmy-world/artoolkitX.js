@@ -68,7 +68,7 @@ import artoolkitXjs from "./artoolkitx.js";
             let arCameraURL = "";
             if (this.cameraParaFileURL !== "") {
                 try {
-                    arCameraURL = await _loadCameraParam(this.cameraParaFileURL);
+                    arCameraURL = await ARController[_loadCameraParam](this.cameraParaFileURL)
                 } catch (e) {
                     //Clean up video which might already be open
                     this.dispose();
@@ -257,7 +257,7 @@ import artoolkitXjs from "./artoolkitx.js";
                 }
             } else {
                 try {
-                    fileName = await _loadTrackable(trackableObj.url);
+                    fileName = await ARController[_loadTrackable](trackableObj.url)
                 } catch (e) {
                     throw "Error to load trackable: " + e;
                 }
@@ -269,7 +269,7 @@ import artoolkitXjs from "./artoolkitx.js";
                 trackableObj.trackableType + ";" + fileName + ";" + trackableObj.width
             );
         } else if (trackableObj.trackableType === "multi") {
-            fileName = await _loadMultiTrackable(trackableObj.url);
+            fileName = await ARController[_loadMultiTrackable](trackableObj.url)
             trackableId = artoolkitXjs.addTrackable(
                 `${trackableObj.trackableType};${fileName}`
             );
@@ -911,11 +911,21 @@ import artoolkitXjs from "./artoolkitx.js";
         video.src = null;
     };
 
+ /**
+ * Defining private statics
+ */
+const _ajax = Symbol('_ajax')
+const _loadTrackable = Symbol('_loadTrackable')
+const _loadCameraParam = Symbol('_loadCameraParam')
+const _loadMultiTrackable = Symbol('_loadMultiTrackable')
+const _ajaxDependencies = Symbol('_ajaxDependencies')
+const _parseMultiFile = Symbol('_parseMultiFile')
+
     // Eg.
     //  ajax('../bin/Data2/markers.dat', '/Data2/markers.dat', callback);
     //  ajax('../bin/Data/patt.hiro', '/patt.hiro', callback);
     // Promise enabled: https://stackoverflow.com/a/48969580/5843642
-    function _ajax(url, target) {
+    ARController[_ajax] = (url, target) => {
         return new Promise((resolve, reject) => {
             var oReq = new XMLHttpRequest();
             oReq.open("GET", url, true);
@@ -1106,10 +1116,10 @@ import artoolkitXjs from "./artoolkitx.js";
     };
 
     var _marker_count = 0;
-    async function _loadTrackable(url) {
+    ARController[_loadTrackable] = async (url) => {
         var filename = "/trackable_" + _marker_count++;
         try {
-            await _ajax(url, filename);
+            await ARController[_ajax](url, filename);
             return filename;
         } catch (e) {
             console.log(e);
@@ -1118,7 +1128,7 @@ import artoolkitXjs from "./artoolkitx.js";
     }
 
     var _camera_count = 0;
-    function _loadCameraParam(url) {
+    ARController[_loadCameraParam] = (url) => {
         return new Promise((resolve, reject) => {
             var filename = "/camera_param_" + _camera_count++;
             if (typeof url === "object" || url.indexOf("\n") > -1) {
@@ -1131,16 +1141,12 @@ import artoolkitXjs from "./artoolkitx.js";
                     reject();
                 }
             } else {
-                _ajax(url, filename)
-                    .then(() => resolve(filename))
-                    .catch(e => {
-                        reject(e);
-                    });
+                ARController[_ajax](url, filename).then(() => resolve(filename)).catch(e => { reject(e) })
             }
         });
     }
 
-    async function _loadMultiTrackable(url) {
+    ARController[_loadMultiTrackable] = async (url) => {
         const filename = "/multi_trackable_" + ARController._multi_marker_count++;
         try {
             const bytes = await ARController[_ajax](url, filename);
@@ -1169,7 +1175,7 @@ import artoolkitXjs from "./artoolkitx.js";
         }
     }
 
-    async function _ajaxDependencies(files) {
+    ARController[_ajaxDependencies] = async (files) => {
         var next = files.pop();
         if (next) {
             await ARController[_ajax](next[0], next[1]);
@@ -1177,7 +1183,7 @@ import artoolkitXjs from "./artoolkitx.js";
         }
     }
 
-    async function _parseMultiFile(bytes) {
+    ARController[_parseMultiFile] = (bytes) => {
         const str = String.fromCharCode.apply(String, bytes); // basically bytesToString
         const lines = str.split("\n");
         const files = [];
@@ -1211,6 +1217,8 @@ import artoolkitXjs from "./artoolkitx.js";
 
         return files;
     }
+    ARController._marker_count = 0
+    ARController._camera_count = 0
     ARController._multi_marker_count = 0;
 
     /* Exports */
