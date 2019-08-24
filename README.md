@@ -50,6 +50,8 @@ Go into the Examples folder, start a http server and test them. For now try:
 - simple_image.html
 - simple_video.html
 - simple_video_hiro.html
+- simple_video-multi-barcode.html
+- simple_video-multi-patt.html
 
 ## Author
 **Thorsten Bux** https://github.com/ThorstenBux
