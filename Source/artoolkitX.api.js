@@ -274,6 +274,13 @@ import artoolkitXjs from "./artoolkitx.js";
             trackableId = artoolkitXjs.addTrackable(
                 `${trackableObj.trackableType};${fileName}`
             );
+        } else if (trackableObj.trackableType === "nft") {
+            fileName = await ARController[_loadNFTTrackable2](trackableObj.url)
+            //var filename = "./Data/pinball-data/pinball"
+            trackableId = artoolkitXjs.addTrackable(
+                //`${trackableObj.trackableType};${trackableObj.url}`
+                `${trackableObj.trackableType};${fileName}`
+            );
         }
 
         if (trackableId >= 0) {
@@ -931,6 +938,8 @@ import artoolkitXjs from "./artoolkitx.js";
  */
 const _ajax = Symbol('_ajax')
 const _loadTrackable = Symbol('_loadTrackable')
+const _loadNFTTrackable = Symbol('_loadNFTTrackable')
+const _loadNFTTrackable2 = Symbol('_loadNFTTrackable2')
 const _loadCameraParam = Symbol('_loadCameraParam')
 const _loadMultiTrackable = Symbol('_loadMultiTrackable')
 const _ajaxDependencies = Symbol('_ajaxDependencies')
@@ -1141,6 +1150,56 @@ const _parseMultiFile = Symbol('_parseMultiFile')
             return e;
         }
     }
+
+    ARController[_loadNFTTrackable] = async (url) => {
+      const filename1 = "/nft_trackable_" + ARController._marker_count++;
+      const filename2 = "/nft_trackable_" + ARController._marker_count++;
+      const filename3 = "/nft_trackable_" + ARController._marker_count++;
+      try {
+          await ARController[_ajax](url + '.fset', filename1)
+            await ARController[_ajax](url + '.iset', filename2)
+              await  ARController[_ajax](url + '.fset3', filename3)
+
+      return filename1, filename2, filename3;
+      } catch (e) {
+          console.log(e);
+          return e;
+      }
+    }
+
+  /*  ARController[_loadNFTTrackable2] = async (url) => {
+      const filename = "/nft_trackable_" + ARController._marker_count++;
+      try {
+
+        const extensions = [ '.fset', '.iset', '.fset3']
+        const files = extensions.map(function (ext) {
+
+            return [url + ext,'pinball' + filename];
+        });
+        console.log(files);
+
+        ARController[_ajaxDependencies](files);
+        return filename;
+      } catch (e) {
+          console.log(e);
+          return e;
+      }
+    }*/
+
+    ARController[_loadNFTTrackable2] = async (url) => {
+      return new Promise((resolve, reject) => {
+        const filename = "/nft_trackable_" + ARController._marker_count++;
+            if (url) {
+              ARController[_ajax](url + '.fset', filename).then(() => resolve(filename)).catch(e => { reject(e) })
+                    if (resolve) {
+                      return new Promise((resolve, reject) => {
+                    const filename = "/nft_trackable_" + ARController._marker_count++ ;
+                    ARController[_ajax](url + '.iset', filename).then(() => resolve(filename)).catch(e => { reject(e) })
+                  });
+              }
+            }
+          });
+      };
 
     var _camera_count = 0;
     ARController[_loadCameraParam] = (url) => {

@@ -1,0 +1,71 @@
+<html>
+<body>
+
+        <script type='text/javascript'>
+    window.artoolkitX_wasm_url = '../SDK/lib/artoolkitx.wasm';
+        </script>
+
+
+<script type="module" src="../SDK/lib/artoolkitX.api.js"></script>
+<script type="module">
+import ARController from '../SDK/lib/artoolkitX.api.js';
+
+let ar1, interval;
+
+const cameraParam = './Data/camera_para.dat';
+
+const config = {
+    cameraParam: cameraParam,
+    width: 640,
+    height: 480
+};
+
+var trackable = {
+    trackableType: "nft",
+    //url: '/home/walter/kalwalt-github/artoolkitX.js/Examples/Data/pinball-data/pinball',
+    url: './Data/pinball-data/pinball',
+    width: 1.0
+}
+// window.addEventListener('artoolkitX-loaded', () => {
+
+ARController.getUserMediaARController(config).then( arController => {
+
+    arController.addEventListener('getMarker', (trackableInfo) => {
+        console.log("TrackableID: " + trackableInfo.data.trackableId);
+        console.log(trackableInfo.data.transformation);
+    });
+
+    try {
+        arController.setLogLevel(0);
+        arController.start().then( () => {
+            console.log("start done");
+            var trackableId = arController.addTrackable(trackable);
+            interval = setInterval(function() {
+                arController.process();
+            }, 13);
+            ar1 = arController;
+        });
+    }
+    catch (e) {
+        console.log(e);
+    }
+} );
+
+// });
+
+window.closeVideo = function() {
+    if(ar1) {
+        ar1.dispose();
+        clearInterval(interval);
+    }
+    else {
+        console.error("Trying to close before opened");
+    }
+}
+
+
+</script>
+
+<button onclick="window.closeVideo()">Close Video</button>
+</body>
+</html>
