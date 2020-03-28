@@ -1,0 +1,171 @@
+<html>
+<head>
+  <script type='text/javascript' src="./Data/js/third_party/gl-matrix.js/gl-matrix-min.js"></script>
+  <script type='text/javascript' src="./Data/js/third_party/litegl.js/litegl.js"></script>
+  <script type='text/javascript' src="./Data/js/third_party/litegraph.js/litegraph.min.js"></script>
+  <script type='text/javascript' src="./Data/js/third_party/litescene.js/litescene.js"></script>  
+  <style type='text/css'>
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    * { margin: 0; padding: 0; }
+  </style>
+<script type="text/javascript">
+var main, camera;
+var APP = {
+  cam_dist: 10,
+
+  init: function()
+  {
+    //create the GL context 
+    try
+    {
+      gl = GL.create({alpha:false, premultipliedAlpha: false });
+    }
+    catch (e)
+    {
+      alert("WebGL not supported by your browser");
+      return;
+    }
+    
+    //resize the canvas and add to DOM
+    gl.canvas.width = 320;
+    gl.canvas.height = 240;
+    this.glcanvas = gl.canvas;
+    document.body.appendChild(gl.canvas);
+    this.gl = gl;
+    gl.animate();
+    //prepare LiteScene
+    LS.Renderer.init();
+    LS.ResourcesManager.setPath("Data/assets/monitor/");
+    LS.ResourcesManager.allow_base_files = true;
+    
+    //scene globals
+    LS.GlobalScene.info.background_color = [0.1,0.1,0.1,1];
+    LS.GlobalScene.info.ambient_color = [0.2,0.2,0.2];
+    //global camera
+    var camera = LS.GlobalScene.getCamera();
+    camera.center = [0,35,0];
+    camera.eye = [150,40,150];
+    camera.far = 1000;
+    camera.near = 0.1;
+    
+    //light
+    var light = LS.GlobalScene.getLight();
+    light.color = [0.6,0.6,0.6];
+    light.position = [150,100,-50];
+    light.target = [0,25,0];
+    light.type = LS.Light.SPOT;
+    light.spot_cone = true;
+    light.far = 500;
+    light.near = 20;
+    light.size = 200;
+    light.resolution = 2048;
+    light.cast_shadows = true;
+    light.hard_shadows = true;
+    light.shadow_bias = 0.2;
+    //create some nodes
+    var node = new LS.SceneNode("monitor");
+    node.material = new LS.StandardMaterial({ textures: { color: "monitor_textura.png" } });
+    node.setMesh("monitor.obj");
+    LS.GlobalScene.root.addChild(node);
+    main = node;
+    node = new LS.SceneNode("screen");
+    node.material = new LS.StandardMaterial({ color: [0.5,0.5,0.5], emissive: [0.3,0.5,1.0], detail:[0,256,256], specular_factor: 2, specular_gloss: 1000,
+      textures: { detail:"pattern_rgb.png", 
+            color: "empty-screen.png" }});
+    node.setMesh("screen.obj");
+    main.addChild(node);
+  
+    //example of forward render function to inject draw calls into the scene
+    LS.Renderer.onRenderScene = function(camera)
+    {
+      LS.Draw.push();
+      LS.Draw.translate( Math.sin( LS.GlobalScene.time ) * 100,100,10);
+      LS.Draw.renderSolidSphere(10);
+      LS.Draw.pop();
+    }
+    //load resources
+    LS.GlobalScene.loadResources();  
+  },
+  ondraw: function()
+  {
+    //move the camera a little bit
+    var idle = 0.2 * Math.sin(new Date().getTime() * 0.0005);
+    camera = LS.GlobalScene.getCamera();
+    //camera.eye = [5 * (APP.cam_dist + idle),40, -20 * (APP.cam_dist + idle)];
+    //render the scene (it uses LS.GlobalScene as default)
+    LS.Renderer.render();
+  },
+  onupdate: function(dt, camMatrix, mat)
+  {
+    var now = new Date().getTime();
+    camera.setCustomProjectionMatrix(camMatrix);
+    main.updateMatrix = true;
+    main.mustUpdate = true;
+    main.transform.applyTransformMatrix(mat);
+    LS.GlobalScene.root.updateMatrix = true;
+
+    
+    LS.GlobalScene.update(dt);
+  },
+  clicked_node: null,  
+}
+</script>
+</head>
+<body>
+  
+  <script type='text/javascript'>
+window.artoolkitX_wasm_url = '../SDK/lib/artoolkitx.wasm';
+  </script>
+
+  <script type="module" src="../SDK/lib/artoolkitX.api.js"></script>
+<video id="v" src="Data/output_4.mp4" width="320" height="240" loop="" controls="" autoplay></video>
+<script type="module">
+    import ARController from '../SDK/lib/artoolkitX.api.js';
+    let ar1, interval;
+
+    const cameraParam = './Data/camera_para.dat';
+
+    const config = {
+        cameraParam: cameraParam,
+        width: 320,
+        height: 240
+    };
+
+    var trackable = {
+        trackableType: "single_barcode",
+        barcodeId: 1
+    }
+
+    window.addEventListener('artoolkitX-loaded', () => {
+
+    var transformationMatrix = mat4.create();
+    var arController = new ARController(v, cameraParam);
+    arController.addEventListener('getMarker', (trackableInfo) => {
+        //console.log("TrackableID: " + trackableInfo.data.trackableId);
+        const transformation = trackableInfo.data.transformation;
+        const markerVisible = trackableInfo.visible;
+        transformationMatrix = transformation;
+    });
+        APP.init();
+    var video = document.getElementById('v');
+    try {
+        arController.start().then( () => {
+            console.log("start done");
+            var trackableId = arController.addTrackable(trackable);
+            
+            interval = setInterval(function() {
+                arController.process(video);
+                const camMatrix = arController.getCameraMatrix(0.1, 1000);
+                APP.ondraw();
+                APP.onupdate(0.01, camMatrix, transformationMatrix);          
+              }, 13);
+              ar1 = arController;
+          })
+        }
+        catch (e) {
+            console.log(e);
+  }
+});
+    </script>
+  </body>
+</html>
