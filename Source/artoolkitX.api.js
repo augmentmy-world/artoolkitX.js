@@ -1112,6 +1112,7 @@ const _loadCameraParam = Symbol('_loadCameraParam')
 const _loadMultiTrackable = Symbol('_loadMultiTrackable')
 const _ajaxDependencies = Symbol('_ajaxDependencies')
 const _parseMultiFile = Symbol('_parseMultiFile')
+const _mapFiles = Symbol('_mapFiles')
 
 // Eg.
 //  ajax('../bin/Data2/markers.dat', '/Data2/markers.dat', callback);
@@ -1171,7 +1172,7 @@ ARController[_loadMultiTrackable] = async (url) => {
   const filename = '/multi_trackable_' + ARController._multi_marker_count++
   try {
     const bytes = await ARController[_ajax](url, filename)
-    let files = ARController[_parseMultiFile](bytes)
+    let files = await ARController[_parseMultiFile](bytes)
 
     // function ok() {
     //     var markerID = Module._addMultiMarker(arId, filename);
@@ -1180,17 +1181,21 @@ ARController[_loadMultiTrackable] = async (url) => {
     // }
 
     // if (!files.length) return ok();
-
-    const path = url.split('/').slice(0, -1).join('/')
-    files = files.map(function (file) {
-      return [path + '/' + file, file]
-    })
+    //console.log(files);
+    files = await ARController[_mapFiles](url, files)
 
     await ARController[_ajaxDependencies](files)
     return filename
   } catch (error) {
     throw new Error('Error loading multi marker: ' + error)
   }
+}
+
+ARController[_mapFiles] = async (url, files) => {
+  const path = url.split('/').slice(0, -1).join('/');
+  return files.map(function(file) {
+      return [path + '/' + file, file]
+    })
 }
 
 ARController[_ajaxDependencies] = async (files) => {
@@ -1201,40 +1206,40 @@ ARController[_ajaxDependencies] = async (files) => {
   }
 }
 
-// ARController[_parseMultiFile] = (bytes) => {
-//   const str = String.fromCharCode.apply(String, bytes) // basically bytesToString
-//   const lines = str.split('\n')
-//   const files = []
+ARController[_parseMultiFile] = async (bytes) => {
+   const str = String.fromCharCode.apply(String, bytes) // basically bytesToString
+   const lines = str.split('\n')
+   const files = []
 
-//   let state = 0 // 0 - read,
-//   let markers = 0
+   let state = 0 // 0 - read,
+   let markers = 0
 
-//   lines.forEach(function (line) {
-//     line = line.trim()
-//     if (!line || line.startsWith('#')) return // FIXME: Should probably be `if (line.indexOf('#') === 0) { return; }`
+   lines.forEach(function (line) {
+     line = line.trim()
+     if (!line || line.startsWith('#')) return // FIXME: Should probably be `if (line.indexOf('#') === 0) { return; }`
 
-//     switch (state) {
-//       case 0:
-//         markers = +line
-//         state = 1
-//         return
-//       case 1: // filename or barcode
-//         if (!line.match(/^\d+$/)) {
-//           files.push(line)
-//         }
-//         return
-//       case 2: // width
-//       case 3: // matrices
-//       case 4:
-//         state++
-//         return
-//       case 5:
-//         state = 1
-//     }
-//   })
+     switch (state) {
+       case 0:
+         markers = +line
+         state = 1
+         return
+       case 1: // filename or barcode
+         if (!line.match(/^\d+$/)) {
+           files.push(line)
+         }
+         return
+       case 2: // width
+       case 3: // matrices
+       case 4:
+         state++
+         return
+       case 5:
+         state = 1
+     }
+   })
 
-//   return files
-// }
+   return files
+ }
 
 ARController._marker_count = 0
 ARController._camera_count = 0
